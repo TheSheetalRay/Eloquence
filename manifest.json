@@ -2,7 +2,7 @@
   "name": "Eloquence & Influence Trainer",
   "short_name": "Eloquence",
   "description": "Practice speaking, persuasion, and influence skills anywhere",
-  "start_url": "/Eloquence/",
+   "start_url": "https://thesheetalray.github.io/Eloquence/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
