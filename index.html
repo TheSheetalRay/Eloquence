@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- PWA Configuration -->
+  <meta name="application-name" content="Eloquence Trainer">
+  <meta name="description" content="Practice speaking, persuasion, and influence skills anywhere, anytime">
+  <meta name="theme-color" content="#4F46E5">
+  <link rel="manifest" href="./manifest.json">
+  
+  <!-- iOS Specific Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Eloquence">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="./icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-192.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="./icon-192.png">
+  
+  <meta name="format-detection" content="telephone=no">
+  
+  <title>Eloquence & Influence Trainer</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    body {
+      overscroll-behavior-y: contain;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    p, li, div[contenteditable] {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .safe-area-top {
+      padding-top: env(safe-area-inset-top);
+    }
+    
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    #root {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body class="safe-area-top safe-area-bottom">
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+    
+    // Lucide icons
+    const { Mic, Square, Play, Pause, RotateCcw, Trophy, Target, Book, MessageSquare, Lightbulb, TrendingUp, Users, CheckCircle, AlertCircle, Sparkles } = lucide;
+
+const EloquenceTrainer = () => {
+  const [activeTab, setActiveTab] = useState('practice');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [audioURL, setAudioURL] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [currentExercise, setCurrentExercise] = useState(null);
+  const [skillFocus, setSkillFocus] = useState('clarity');
+  const [completedToday, setCompletedToday] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [conversationMode, setConversationMode] = useState(false);
+  const [savedConversations, setSavedConversations] = useState([]);
+  
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
+  const timerInterval = useRef(null);
+  const audioPlayer = useRef(null);
+
+  // Practice exercises organized by type
+  const exercises = {
+    clarity: [
+      "Explain how photosynthesis works to a 10-year-old",
+      "Describe your morning routine as if writing instructions for someone",
+      "Explain the plot of your favorite movie without saying 'um' or 'like'",
+      "Teach someone how to make a simple recipe step-by-step",
+      "Describe a complex work project in simple terms"
+    ],
+    persuasion: [
+      "Convince someone to try a new restaurant you love",
+      "Argue for a four-day work week using three distinct reasons",
+      "Persuade someone to read a book you enjoyed",
+      "Make a case for why your city is worth visiting",
+      "Convince someone to try a hobby you're passionate about"
+    ],
+    storytelling: [
+      "Tell a 2-minute story about a childhood memory",
+      "Describe a challenge you overcame and what you learned",
+      "Share an embarrassing moment that taught you something",
+      "Tell about a time you changed your mind about something important",
+      "Describe a person who influenced you and why"
+    ],
+    vocabulary: [
+      "Describe this room without using the words 'nice', 'good', or 'bad'",
+      "Explain your job using only words a child would understand",
+      "Describe a recent emotion you felt using a precise, uncommon word",
+      "Talk about food without using 'delicious', 'tasty', or 'good'",
+      "Describe weather patterns using specific meteorological terms"
+    ],
+    influence: [
+      "Present both sides of a controversial issue fairly, then state your position",
+      "Acknowledge a common objection to your viewpoint, then address it",
+      "Use a personal anecdote to illustrate a broader principle",
+      "Frame a request in terms of the other person's benefits",
+      "Describe a time you successfully changed someone's mind - what worked?"
+    ]
+  };
+
+  const skillDescriptions = {
+    clarity: "Practice explaining complex ideas simply and removing filler words",
+    persuasion: "Build compelling arguments with structure and evidence",
+    storytelling: "Engage listeners through narrative and vivid details",
+    vocabulary: "Expand active vocabulary and word precision",
+    influence: "Master techniques of ethical persuasion and framing"
+  };
+
+  const persuasionTechniques = [
+    {
+      title: "Reciprocity",
+      description: "People feel obligated to give back when they receive. Give value first.",
+      example: "Instead of asking for a favor directly, offer help or insight first, then make your request."
+    },
+    {
+      title: "Social Proof",
+      description: "People follow what others are doing, especially those similar to them.",
+      example: "'Many parents in our area have found this approach helpful' works better than abstract benefits."
+    },
+    {
+      title: "Consistency",
+      description: "People want to act consistently with their stated values and past commitments.",
+      example: "Ask 'You care about education, right?' before proposing an educational initiative."
+    },
+    {
+      title: "Liking",
+      description: "We're influenced by people we like - similarity, compliments, cooperation build this.",
+      example: "Find genuine common ground early. 'I'm also a parent dealing with...' creates connection."
+    },
+    {
+      title: "Authority",
+      description: "Credible expertise influences decisions. Establish relevant credentials.",
+      example: "'In my 10 years working with...' or cite respected sources to build trust."
+    },
+    {
+      title: "Scarcity",
+      description: "People value what's rare or time-limited. Highlight unique benefits.",
+      example: "'This approach only works if started early' vs 'This is a good approach.'"
+    },
+    {
+      title: "Unity",
+      description: "Shared identity ('we' language) creates stronger influence than outsider appeals.",
+      example: "'As fellow parents/professionals/residents, we...' vs 'You should...'"
+    }
+  ];
+
+  const rhetoricalDevices = [
+    {
+      name: "Tricolon",
+      definition: "Three parallel phrases for rhythm and emphasis",
+      example: "'We will fight on the beaches, on the landing grounds, in the fields'"
+    },
+    {
+      name: "Anaphora",
+      definition: "Repeating words at the start of successive clauses",
+      example: "'I have a dream... I have a dream... I have a dream...'"
+    },
+    {
+      name: "Metaphor",
+      definition: "Comparing unlike things to clarify complex ideas",
+      example: "'Time is money' - makes abstract concept concrete"
+    },
+    {
+      name: "Rhetorical Question",
+      definition: "Questions that make a point without needing an answer",
+      example: "'If not now, when? If not us, who?'"
+    },
+    {
+      name: "Antithesis",
+      definition: "Contrasting ideas in parallel structure",
+      example: "'Ask not what your country can do for you, ask what you can do for your country'"
+    },
+    {
+      name: "Amplification",
+      definition: "Repeating an idea while adding more detail",
+      example: "'This is a problem. A serious problem. A problem that demands immediate action.'"
+    }
+  ];
+
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      timerInterval.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+      }
+    }
+    return () => {
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+      }
+    };
+  }, [isRecording, isPaused]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      mediaRecorder.current.ondataavailable = (event) => {
+        audioChunks.current.push(event.data);
+      };
+
+      mediaRecorder.current.onstop = () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioURL(url);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      setAudioURL(null);
+    } catch (err) {
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const pauseRecording = () => {
+    if (mediaRecorder.current && isRecording) {
+      if (isPaused) {
+        mediaRecorder.current.resume();
+        setIsPaused(false);
+      } else {
+        mediaRecorder.current.pause();
+        setIsPaused(true);
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      if (!completedToday.includes(currentExercise)) {
+        setCompletedToday([...completedToday, currentExercise]);
+      }
+      
+      // If in conversation mode, trigger analysis
+      if (conversationMode && audioChunks.current.length > 0) {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        analyzeConversation(audioBlob);
+      }
+    }
+  };
+
+  const resetRecording = () => {
+    setAudioURL(null);
+    setRecordingTime(0);
+    if (audioPlayer.current) {
+      audioPlayer.current.pause();
+      audioPlayer.current.currentTime = 0;
+    }
+  };
+
+  const getRandomExercise = (skill) => {
+    const exerciseList = exercises[skill];
+    const randomExercise = exerciseList[Math.floor(Math.random() * exerciseList.length)];
+    setCurrentExercise(randomExercise);
+    resetRecording();
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const analyzeConversation = async (audioBlob) => {
+    setIsAnalyzing(true);
+    setFeedback(null);
+
+    try {
+      // Convert audio blob to base64
+      const reader = new FileReader();
+      const base64Audio = await new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+
+      // Call Claude API for analysis
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "user",
+              content: `You are an expert communication coach. Analyze this recorded conversation or speech and provide constructive feedback.
+
+Focus on:
+1. **Clarity & Structure**: How clear and organized was the communication?
+2. **Filler Words**: Count and identify patterns (um, like, you know, etc.)
+3. **Pacing**: Too fast, too slow, or good rhythm?
+4. **Confidence**: Tone, energy, and conviction in delivery
+5. **Persuasion**: Use of compelling arguments, evidence, or techniques
+6. **Word Choice**: Vocabulary precision and variety
+7. **Areas for Improvement**: 2-3 specific, actionable suggestions
+
+Please provide:
+- A brief overall assessment (2-3 sentences)
+- Specific strengths (2-3 bullet points)
+- Specific improvements (2-3 bullet points with concrete examples)
+- One immediate practice exercise to address the biggest weakness
+
+Be encouraging but honest. Format as JSON with keys: overall, strengths (array), improvements (array), exercise (string).`
+            }
+          ],
+        })
+      });
+
+      const data = await response.json();
+      
+      // Extract text from response
+      const responseText = data.content
+        .filter(item => item.type === "text")
+        .map(item => item.text)
+        .join("\n");
+
+      // Try to parse as JSON, fallback to structured text
+      let parsedFeedback;
+      try {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsedFeedback = JSON.parse(jsonMatch[0]);
+        } else {
+          // Create structured feedback from text
+          parsedFeedback = {
+            overall: responseText.substring(0, 300),
+            strengths: ["Analysis provided above"],
+            improvements: ["See detailed feedback above"],
+            exercise: "Review the feedback and practice"
+          };
+        }
+      } catch (e) {
+        parsedFeedback = {
+          overall: responseText,
+          strengths: ["Your recording has been analyzed"],
+          improvements: ["See detailed feedback above"],
+          exercise: "Apply the suggestions in your next conversation"
+        };
+      }
+
+      setFeedback(parsedFeedback);
+      
+      // Save conversation to history
+      const newConversation = {
+        id: Date.now(),
+        date: new Date().toLocaleString(),
+        duration: recordingTime,
+        feedback: parsedFeedback,
+        audioURL: audioURL
+      };
+      setSavedConversations(prev => [newConversation, ...prev].slice(0, 10)); // Keep last 10
+
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setFeedback({
+        overall: "Unable to analyze the recording at this time. Please try again.",
+        strengths: ["Recording captured successfully"],
+        improvements: ["Try the analysis again, or review the recording manually"],
+        exercise: "Listen to your recording and note one thing you'd like to improve"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Eloquence & Influence Trainer</h1>
+          <p className="text-gray-600">Practice anywhere, anytime. Become a master communicator.</p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 overflow-x-auto bg-white rounded-lg p-2 shadow-sm">
+          <button
+            onClick={() => setActiveTab('practice')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'practice' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Mic className="w-4 h-4" />
+            Practice
+          </button>
+          <button
+            onClick={() => setActiveTab('conversations')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'conversations' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Real Conversations
+          </button>
+          <button
+            onClick={() => setActiveTab('techniques')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'techniques' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Lightbulb className="w-4 h-4" />
+            Persuasion Techniques
+          </button>
+          <button
+            onClick={() => setActiveTab('rhetoric')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'rhetoric' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Book className="w-4 h-4" />
+            Rhetorical Devices
+          </button>
+          <button
+            onClick={() => setActiveTab('progress')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'progress' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Progress
+          </button>
+        </div>
+
+        {/* Practice Tab */}
+        {activeTab === 'practice' && (
+          <div className="space-y-6">
+            {/* Skill Selection */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Target className="w-5 h-5 text-indigo-600" />
+                Choose Your Focus
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {Object.entries(skillDescriptions).map(([skill, description]) => (
+                  <button
+                    key={skill}
+                    onClick={() => {
+                      setSkillFocus(skill);
+                      getRandomExercise(skill);
+                    }}
+                    className={`p-4 rounded-lg text-left transition-all ${
+                      skillFocus === skill
+                        ? 'bg-indigo-600 text-white shadow-lg'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="font-semibold capitalize mb-1">{skill}</div>
+                    <div className={`text-sm ${skillFocus === skill ? 'text-indigo-100' : 'text-gray-500'}`}>
+                      {description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Current Exercise */}
+            {currentExercise && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-indigo-600" />
+                    Your Exercise
+                  </h2>
+                  <button
+                    onClick={() => getRandomExercise(skillFocus)}
+                    className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1 text-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    New Exercise
+                  </button>
+                </div>
+                
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 mb-6">
+                  <p className="text-lg text-gray-800 leading-relaxed">{currentExercise}</p>
+                </div>
+
+                {/* Recording Controls */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-4">
+                    {!isRecording ? (
+                      <button
+                        onClick={startRecording}
+                        className="flex items-center gap-2 bg-red-600 text-white px-8 py-4 rounded-full hover:bg-red-700 transition-all shadow-lg"
+                      >
+                        <Mic className="w-5 h-5" />
+                        Start Recording
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={pauseRecording}
+                          className="flex items-center gap-2 bg-yellow-600 text-white px-6 py-3 rounded-full hover:bg-yellow-700 transition-all"
+                        >
+                          {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                          {isPaused ? 'Resume' : 'Pause'}
+                        </button>
+                        <button
+                          onClick={stopRecording}
+                          className="flex items-center gap-2 bg-gray-800 text-white px-6 py-3 rounded-full hover:bg-gray-900 transition-all"
+                        >
+                          <Square className="w-5 h-5" />
+                          Stop
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Timer */}
+                  <div className="text-center">
+                    <div className={`text-3xl font-mono ${isRecording ? 'text-red-600' : 'text-gray-400'}`}>
+                      {formatTime(recordingTime)}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Target: 2-3 minutes
+                    </div>
+                  </div>
+
+                  {/* Playback */}
+                  {audioURL && (
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Your Recording</span>
+                        <button
+                          onClick={resetRecording}
+                          className="text-sm text-indigo-600 hover:text-indigo-700"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      <audio ref={audioPlayer} src={audioURL} controls className="w-full" />
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p className="font-semibold">Listen for:</p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Filler words (um, like, you know)</li>
+                          <li>Pace and pauses - too fast or too slow?</li>
+                          <li>Clarity of explanation</li>
+                          <li>Confidence in delivery</li>
+                          <li>Word choice and precision</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Tips */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Quick Practice Tips</h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li>• Record daily, even just 2 minutes. Consistency beats perfection.</li>
+                <li>• Listen to your recordings same-day while fresh in your mind.</li>
+                <li>• Focus on ONE improvement per week - don't overwhelm yourself.</li>
+                <li>• Practice in real conversations - that's where it counts.</li>
+                <li>• Pause before speaking to organize thoughts briefly.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Real Conversations Tab */}
+        {activeTab === 'conversations' && (
+          <div className="space-y-6">
+            {/* Instructions */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600" />
+                Record & Analyze Real Conversations
+              </h2>
+              <div className="bg-indigo-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>How it works:</strong> Record yourself during actual conversations, meetings, or presentations. 
+                  Claude will analyze your communication and give you personalized feedback.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+                  <li>Best for: Phone calls, 1-on-1s, presentations, team meetings</li>
+                  <li>Get feedback on clarity, persuasion, pacing, and word choice</li>
+                  <li>Track your improvement over time</li>
+                  <li>Privacy note: Only you can access these recordings</li>
+                </ul>
+              </div>
+
+              {!conversationMode && (
+                <button
+                  onClick={() => {
+                    setConversationMode(true);
+                    setFeedback(null);
+                    resetRecording();
+                  }}
+                  className="w-full bg-indigo-600 text-white px-6 py-4 rounded-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 font-semibold"
+                >
+                  <Mic className="w-5 h-5" />
+                  Start Recording a Conversation
+                </button>
+              )}
+            </div>
+
+            {/* Recording Interface */}
+            {conversationMode && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Recording in Progress</h3>
+                  {!isRecording && !audioURL && (
+                    <button
+                      onClick={() => {
+                        setConversationMode(false);
+                        setFeedback(null);
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 mb-6">
+                  <div className="text-center mb-4">
+                    <div className={`text-4xl font-mono mb-2 ${isRecording ? 'text-red-600 animate-pulse' : 'text-gray-400'}`}>
+                      {formatTime(recordingTime)}
+                    </div>
+                    {isRecording && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-red-600">
+                        <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                        Recording...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-4">
+                    {!isRecording && !audioURL ? (
+                      <button
+                        onClick={startRecording}
+                        className="flex items-center gap-2 bg-red-600 text-white px-8 py-4 rounded-full hover:bg-red-700 transition-all shadow-lg"
+                      >
+                        <Mic className="w-5 h-5" />
+                        Start Recording
+                      </button>
+                    ) : isRecording ? (
+                      <>
+                        <button
+                          onClick={pauseRecording}
+                          className="flex items-center gap-2 bg-yellow-600 text-white px-6 py-3 rounded-full hover:bg-yellow-700 transition-all"
+                        >
+                          {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                          {isPaused ? 'Resume' : 'Pause'}
+                        </button>
+                        <button
+                          onClick={stopRecording}
+                          className="flex items-center gap-2 bg-gray-800 text-white px-6 py-3 rounded-full hover:bg-gray-900 transition-all"
+                        >
+                          <Square className="w-5 h-5" />
+                          Stop & Analyze
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Playback */}
+                {audioURL && !isAnalyzing && !feedback && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <audio src={audioURL} controls className="w-full mb-4" />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+                          analyzeConversation(audioBlob);
+                        }}
+                        className="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Get AI Feedback
+                      </button>
+                      <button
+                        onClick={() => {
+                          resetRecording();
+                          setConversationMode(false);
+                        }}
+                        className="px-4 py-3 text-gray-600 hover:text-gray-800"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Analysis Loading */}
+                {isAnalyzing && (
+                  <div className="bg-indigo-50 rounded-lg p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                    <p className="text-gray-700 font-medium">Analyzing your conversation...</p>
+                    <p className="text-sm text-gray-600 mt-2">This may take a moment</p>
+                  </div>
+                )}
+
+                {/* AI Feedback */}
+                {feedback && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
+                      <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-emerald-600" />
+                        Overall Assessment
+                      </h3>
+                      <p className="text-gray-700">{feedback.overall}</p>
+                    </div>
+
+                    <div className="bg-white rounded-lg border-2 border-green-200 p-6">
+                      <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        Strengths
+                      </h3>
+                      <ul className="space-y-2">
+                        {feedback.strengths.map((strength, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-gray-700">
+                            <span className="text-green-600 mt-1">✓</span>
+                            <span>{strength}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="bg-white rounded-lg border-2 border-amber-200 p-6">
+                      <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-600" />
+                        Areas for Improvement
+                      </h3>
+                      <ul className="space-y-2">
+                        {feedback.improvements.map((improvement, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-gray-700">
+                            <span className="text-amber-600 mt-1">→</span>
+                            <span>{improvement}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="bg-indigo-50 rounded-lg p-6">
+                      <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <Target className="w-5 h-5 text-indigo-600" />
+                        Practice Exercise
+                      </h3>
+                      <p className="text-gray-700">{feedback.exercise}</p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          resetRecording();
+                          setConversationMode(false);
+                          setFeedback(null);
+                        }}
+                        className="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-all"
+                      >
+                        Record Another
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab('practice');
+                          setConversationMode(false);
+                        }}
+                        className="px-4 py-3 text-gray-600 hover:text-gray-800"
+                      >
+                        Back to Practice
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Conversation History */}
+            {savedConversations.length > 0 && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Recent Conversations</h3>
+                <div className="space-y-3">
+                  {savedConversations.map((conv) => (
+                    <div key={conv.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="text-sm text-gray-600">{conv.date}</div>
+                        <div className="text-sm font-mono text-gray-500">{formatTime(conv.duration)}</div>
+                      </div>
+                      <p className="text-sm text-gray-700 line-clamp-2">{conv.feedback.overall}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tips */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Recording Tips</h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li>• Position your phone close enough to capture your voice clearly</li>
+                <li>• Record at least 2-3 minutes for meaningful feedback</li>
+                <li>• Try recording different types of conversations (casual, professional, persuasive)</li>
+                <li>• Review feedback immediately while the conversation is fresh</li>
+                <li>• Apply one improvement in your very next conversation</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Persuasion Techniques Tab */}
+        {activeTab === 'techniques' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-md p-6 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">7 Principles of Influence</h2>
+              <p className="text-gray-600 text-sm">
+                Based on Robert Cialdini's research. Master these ethical persuasion techniques.
+              </p>
+            </div>
+            {persuasionTechniques.map((technique, idx) => (
+              <div key={idx} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+                <h3 className="text-lg font-bold text-indigo-600 mb-2">{technique.title}</h3>
+                <p className="text-gray-700 mb-3">{technique.description}</p>
+                <div className="bg-indigo-50 rounded-lg p-4">
+                  <div className="text-sm font-semibold text-gray-700 mb-1">Example:</div>
+                  <div className="text-sm text-gray-600 italic">{technique.example}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Rhetorical Devices Tab */}
+        {activeTab === 'rhetoric' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-md p-6 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Powerful Rhetorical Devices</h2>
+              <p className="text-gray-600 text-sm">
+                Tools used by history's greatest speakers. Practice incorporating these into your speech.
+              </p>
+            </div>
+            {rhetoricalDevices.map((device, idx) => (
+              <div key={idx} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+                <h3 className="text-lg font-bold text-purple-600 mb-2">{device.name}</h3>
+                <p className="text-gray-700 mb-3">{device.definition}</p>
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <div className="text-sm font-semibold text-gray-700 mb-1">Example:</div>
+                  <div className="text-sm text-gray-600 italic">"{device.example}"</div>
+                </div>
+              </div>
+            ))}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 mt-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Practice Exercise</h3>
+              <p className="text-sm text-gray-700">
+                Choose one device each day. During conversations, try to use it naturally at least once. 
+                Notice how it affects your message's impact and memorability.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Progress Tab */}
+        {activeTab === 'progress' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                Today's Progress
+              </h2>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Exercises Completed</span>
+                  <span className="text-2xl font-bold text-indigo-600">{completedToday.length}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-indigo-600 h-3 rounded-full transition-all"
+                    style={{ width: `${Math.min((completedToday.length / 5) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-gray-600">Goal: 5 exercises per day</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold text-gray-900 mb-4">Your Development Path</h3>
+              <div className="space-y-4">
+                <div className="border-l-4 border-indigo-600 pl-4">
+                  <div className="font-semibold text-gray-900">Week 1-2: Foundation</div>
+                  <p className="text-sm text-gray-600">Focus on recording daily and eliminating filler words</p>
+                </div>
+                <div className="border-l-4 border-purple-600 pl-4">
+                  <div className="font-semibold text-gray-900">Week 3-4: Clarity</div>
+                  <p className="text-sm text-gray-600">Practice explaining complex ideas simply</p>
+                </div>
+                <div className="border-l-4 border-pink-600 pl-4">
+                  <div className="font-semibold text-gray-900">Week 5-8: Persuasion</div>
+                  <p className="text-sm text-gray-600">Apply influence principles in real conversations</p>
+                </div>
+                <div className="border-l-4 border-yellow-600 pl-4">
+                  <div className="font-semibold text-gray-900">Week 9-12: Mastery</div>
+                  <p className="text-sm text-gray-600">Combine techniques naturally and expand vocabulary</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 mb-3">Weekly Challenge</h3>
+              <p className="text-sm text-gray-700 mb-3">
+                Use the "Reciprocity" principle in three conversations this week. Offer value before making requests.
+              </p>
+              <p className="text-xs text-gray-600">
+                Track your results: Did people respond more positively? Did you get more buy-in?
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EloquenceTrainer;
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<EloquenceTrainer />);
+
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then((registration) => {
+            console.log('ServiceWorker registered:', registration);
+          })
+          .catch((error) => {
+            console.log('ServiceWorker registration failed:', error);
+          });
+      });
+    }
+  </script>
+
+  <!-- Initialize Lucide Icons -->
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
